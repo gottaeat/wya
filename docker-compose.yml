@@ -1,0 +1,18 @@
+---
+networks:
+  wya:
+    external: false
+
+services:
+  wya:
+    #build:
+    #  context: .
+    image: ghcr.io/gottaeat/wya:latest
+    container_name: wya
+    restart: unless-stopped
+    networks:
+      - wya
+    volumes:
+      - ./data:/data
+    ports:
+      - 8080:8080
