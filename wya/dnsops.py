@@ -1,14 +1,15 @@
 import dns.resolver
 import dns.reversename
 
-class DNSQuery:
+
+class DNSOps:
     def __init__(self):
         self.resolver = None
         self._init_resolver()
 
     def _init_resolver(self):
         self.resolver = dns.resolver.Resolver(configure=False)
-        self.resolver.nameservers = ["1.1.1.1"]
+        self.resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
         self.resolver.timeout = 2
         self.resolver.lifetime = 2
 
