@@ -43,20 +43,26 @@ class IPQuery:
         self.city_db = maxminddb.open_database("/data/GeoLite2-City.mmdb")
 
     def query(self, ip_address):
-        # gen dicts
+        # gen dicts + config obj
         city_dict = self.city_db.get(ip_address)
         asn_dict = self.asn_db.get(ip_address)
-
-        # asn precheck
-        if not asn_dict or "autonomous_system_number" not in asn_dict:
-            return {"error": "not advertised"}
 
         ipquery = IPQueryConfig()
 
         # ip + asn
         ipquery.ip = ip_address
-        ipquery.asn = f'AS{asn_dict["autonomous_system_number"]}'
-        ipquery.org = asn_dict["autonomous_system_organization"]
+
+        if asn_dict:
+            try:
+                ipquery.asn = f'AS{asn_dict["autonomous_system_number"]}'
+            except KeyError:
+                pass
+
+            try:
+                ipquery.org = asn_dict["autonomous_system_organization"]
+            except KeyError:
+                pass
+
         ipquery.hostname = self.dns_ops.check_dns(ip_address)
 
         # geo precheck
@@ -89,7 +95,7 @@ class IPQuery:
             for subdivision in reversed(city_dict["subdivisions"]):
                 subdivision_str += subdivision["names"]["en"] + "/"
 
-            ipquery.region = subdivision_str[:-1]  # Remove the trailing "/"
+            ipquery.region = subdivision_str[:-1]
 
         # loc
         try:
