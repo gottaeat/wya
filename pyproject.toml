@@ -13,9 +13,10 @@ dynamic = ["version", "description"]
 dependencies = [
     "dnspython >= 2.6.1",
     "flask >= 3.0.3",
+    "flask_limiter >= 3.8.0",
     "maxminddb >= 2.6.2",
-    "waitress >= 3.0.0",
     "paste >= 3.10.1",
+    "waitress >= 3.0.0",
 ]
 
 [project.urls]
