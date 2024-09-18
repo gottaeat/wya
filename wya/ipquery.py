@@ -1,9 +1,9 @@
 import maxminddb
 
-from .dnsquery import DNSQuery
-dquery = DNSQuery()
+from .dnsops import DNSOps
 
-class GeoQueryConfig:
+
+class IPQueryConfig:
     def __init__(self):
         self.ip = None
         self.asn = None
@@ -16,17 +16,33 @@ class GeoQueryConfig:
         self.loc = None
 
 
-class GeoQuery:
+class IPQuery:
     def __init__(self):
+        self.dns_ops = DNSOps()
+
         self.asn_db = None
         self.city_db = None
-        self.init_dbs()
+        self.load_dbs()
 
-    def init_dbs(self):
+    @staticmethod
+    def mkdict(ipquery):
+        return {
+            "ip": ipquery.ip,
+            "asn": ipquery.asn,
+            "org": ipquery.org,
+            "hostname": ipquery.hostname,
+            "country": ipquery.country,
+            "city": ipquery.city,
+            "region": ipquery.region,
+            "loc": ipquery.loc,
+            "tz": ipquery.tz,
+        }
+
+    def load_dbs(self):
         self.asn_db = maxminddb.open_database("GeoLite2-ASN.mmdb")
         self.city_db = maxminddb.open_database("GeoLite2-City.mmdb")
 
-    def geoquery(self, ip_address):
+    def query(self, ip_address):
         # gen dicts
         city_dict = self.city_db.get(ip_address)
         asn_dict = self.asn_db.get(ip_address)
@@ -35,73 +51,59 @@ class GeoQuery:
         if not asn_dict or "autonomous_system_number" not in asn_dict:
             return {"error": "not advertised"}
 
-        geoquery = GeoQueryConfig()
+        ipquery = IPQueryConfig()
 
         # ip + asn
-        geoquery.ip = ip_address
-        geoquery.asn = f'AS{asn_dict["autonomous_system_number"]}'
-        geoquery.org = asn_dict["autonomous_system_organization"]
-        geoquery.hostname = dquery.check_dns(ip_address)
+        ipquery.ip = ip_address
+        ipquery.asn = f'AS{asn_dict["autonomous_system_number"]}'
+        ipquery.org = asn_dict["autonomous_system_organization"]
+        ipquery.hostname = self.dns_ops.check_dns(ip_address)
 
         # geo precheck
         if not city_dict:
-            return geoquery
+            return ipquery
 
-        # no country
+        # no country -> registered_country
         if "country" not in city_dict:
             if "registered_country" in city_dict:
-                geoquery.country = city_dict["registered_country"]["iso_code"]
+                ipquery.country = city_dict["registered_country"]["iso_code"]
 
-            return geoquery
+            return ipquery
 
         # country
         try:
-            geoquery.country = city_dict["country"]["iso_code"]
+            ipquery.country = city_dict["country"]["iso_code"]
         except KeyError:
             pass
 
         # city
         try:
-            geoquery.city = city_dict["city"]["names"]["en"]
+            ipquery.city = city_dict["city"]["names"]["en"]
         except KeyError:
             pass
 
-        # subdivisions (provinces etc.)
+        # region
         if "subdivisions" in city_dict:
             subdivision_str = ""
 
             for subdivision in reversed(city_dict["subdivisions"]):
                 subdivision_str += subdivision["names"]["en"] + "/"
 
-            geoquery.region = subdivision_str[:-1]  # Remove the trailing "/"
+            ipquery.region = subdivision_str[:-1]  # Remove the trailing "/"
 
-        # coords
+        # loc
         try:
             loc_lat = city_dict["location"]["latitude"]
             loc_lon = city_dict["location"]["longitude"]
 
-            geoquery.loc = f"{loc_lat},{loc_lon}"
+            ipquery.loc = f"{loc_lat},{loc_lon}"
         except KeyError:
             pass
 
-        # timezone
+        # tz
         try:
-            geoquery.tz = city_dict["location"]["time_zone"]
+            ipquery.tz = city_dict["location"]["time_zone"]
         except KeyError:
             pass
 
-        return geoquery
-
-    @staticmethod
-    def geo_to_dict(geoquery):
-        return {
-            "ip": geoquery.ip,
-            "asn": geoquery.asn,
-            "org": geoquery.org,
-            "hostname": geoquery.hostname,
-            "country": geoquery.country,
-            "city": geoquery.city,
-            "region": geoquery.region,
-            "loc": geoquery.loc,
-            "tz": geoquery.tz,
-        }
+        return ipquery
