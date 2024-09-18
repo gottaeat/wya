@@ -39,8 +39,8 @@ class IPQuery:
         }
 
     def load_dbs(self):
-        self.asn_db = maxminddb.open_database("GeoLite2-ASN.mmdb")
-        self.city_db = maxminddb.open_database("GeoLite2-City.mmdb")
+        self.asn_db = maxminddb.open_database("/data/GeoLite2-ASN.mmdb")
+        self.city_db = maxminddb.open_database("/data/GeoLite2-City.mmdb")
 
     def query(self, ip_address):
         # gen dicts
